@@ -1,5 +1,8 @@
-build
+_build
 .DS_Store
 *.conflicts
 TAGS
 *~*
+setup.log
+setup.data
+*.byte

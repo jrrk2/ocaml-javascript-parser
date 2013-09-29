@@ -14,43 +14,6 @@ module Pos : sig
   val isSynthetic : t -> bool
 end
 
-
-module IntSet : Set.S
-  with type elt = int
-
-module IntSetExt : SetExt.S
-  with type elt = int
-  and type t = IntSet.t
-
-module IdSet : Set.S 
-  with type elt = id
-
-module IdSetExt : SetExt.S 
-  with type elt = id 
-  and type t = IdSet.t
-
-module PosSet : Set.S 
-  with type elt = Pos.t
-
-module PosSetExt : SetExt.S 
-  with type elt = Pos.t
-  and type t = PosSet.t
-
-module PosMap : Map.S
-  with type key = Pos.t
-
-module PosMapExt : MapExt.S
-  with type key = Pos.t
-  with type +'a t = 'a PosMap.t
-
-module IdMap : Map.S
-  with type key = id
-
-module IdMapExt : MapExt.S
-  with type key = id
-  with type +'a t = 'a IdMap.t
-
-
 val fold_left : ('a -> 'b -> 'a) -> 'a -> 'b list -> 'a
 
 val fold_right : ('a -> 'b -> 'b) -> 'a list -> 'b -> 'b

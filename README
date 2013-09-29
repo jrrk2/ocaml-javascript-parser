@@ -1,6 +1,2 @@
-LambdaJS 2.0
-Copyright (c) 2010 PLT Scheme Inc.
-All Rights Reserved.
-
-This version of LambdaJS is not yet complete. The complete, tested version is
-available at http://github.com/arjunguha/lambdajs/tree/LambdaJS-1.0.
+This is a parser for JavaScript, written in OCaml. The parser supports
+ECMAScript 3. It does not do semicolon insertion.

@@ -37,25 +37,6 @@ module Int = struct
   let compare = Pervasives.compare
 end
 
-module IntSet = Set.Make (Int)
-module IntSetExt = SetExt.Make (IntSet)
-
-module IdSet = Set.Make (IdOrderedType)
-
-module IdSetExt = SetExt.Make (IdSet)
-
-module PosSet = Set.Make (Pos)
-
-module PosSetExt = SetExt.Make (PosSet)
-
-module PosMap = Map.Make (Pos)
-
-module PosMapExt = MapExt.Make (Pos) (PosMap)
-
-module IdMap = Map.Make (IdOrderedType)
-
-module IdMapExt = MapExt.Make (IdOrderedType) (IdMap)
-
 let fold_left = List.fold_left
 
 let fold_right = List.fold_right
