@@ -1,0 +1,12 @@
+# OASIS_START
+# DO NOT EDIT (digest: f880de040b615446db77d496e7b86e77)
+version = "0.9"
+description = "A parser and lexer for JavaScript (ECMAScript)"
+requires = "unix"
+archive(byte) = "javascript-parser.cma"
+archive(byte, plugin) = "javascript-parser.cma"
+archive(native) = "javascript-parser.cmxa"
+archive(native, plugin) = "javascript-parser.cmxs"
+exists_if = "javascript-parser.cma"
+# OASIS_STOP
+

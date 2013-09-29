@@ -1,6 +1,6 @@
 OASISFormat: 0.3
 Name:        javascript-parser
-Version:     1.0.2
+Version:     0.9
 Synopsis:    A parser and lexer for JavaScript (ECMAScript)
 Authors:     Arjun Guha, Benjamin S. Lerner, Joe Gibbs Politz, and 
              Claudiu Saftoiu
