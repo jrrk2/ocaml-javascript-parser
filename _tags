@@ -1,8 +1,9 @@
 # OASIS_START
-# DO NOT EDIT (digest: 0a4a42321219129f4c53cd83bc8e13fe)
-# Ignore VCS directories, you can use the same kind of rule outside 
-# OASIS_START/STOP if you want to exclude directories that contains 
+# DO NOT EDIT (digest: a4f497586c6d13d4e2c7a958b3d926e8)
+# Ignore VCS directories, you can use the same kind of rule outside
+# OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
+true: annot, bin_annot
 <**/.svn>: -traverse
 <**/.svn>: not_hygienic
 ".bzr": -traverse
@@ -15,11 +16,11 @@
 "_darcs": not_hygienic
 # Library javascript-parser
 "lib/javascript-parser.cmxs": use_javascript-parser
-<lib/*.ml{,i}>: pkg_unix
+<lib/*.ml{,i,y}>: pkg_unix
 # Executable testtool
-"testtool/Main.byte": use_javascript-parser
 "testtool/Main.byte": pkg_unix
-<testtool/*.ml{,i}>: use_javascript-parser
-<testtool/*.ml{,i}>: pkg_unix
+"testtool/Main.byte": use_javascript-parser
+<testtool/*.ml{,i,y}>: pkg_unix
+<testtool/*.ml{,i,y}>: use_javascript-parser
 # OASIS_STOP
 true : use_menhir
