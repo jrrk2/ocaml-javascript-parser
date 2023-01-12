@@ -6,3 +6,5 @@ TAGS
 setup.log
 setup.data
 *.byte
+lib/javascript-parser.mldylib
+top
