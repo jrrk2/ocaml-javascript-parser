@@ -98,6 +98,9 @@ rule token = parse
    | '\'' { parse_re := false; string_lit '\'' lexbuf }
    
    | num_lit as x {  parse_re := false; parse_num_lit x }
+
+   | "()" { parse_re := false; Unit }
+
    | "{" { parse_re := false; LBrace }
    | "}" { parse_re := false; RBrace }
    | '(' { parse_re := true; LParen }
@@ -134,6 +137,7 @@ rule token = parse
    | "<=" { parse_re := true; LEq }
    | "<" { parse_re := true; LT }
    | ">=" { parse_re := true; GEq }
+   | "=>" { parse_re := false; Arrow }
    | ">" { parse_re := true; GT }
    | "++" { parse_re := true; PlusPlus }
    | "--" { parse_re := true; MinusMinus }

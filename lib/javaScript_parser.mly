@@ -31,7 +31,7 @@ let rec expr_to_lvalue (e : expr) : lvalue =  match e with
 %token LBrace RBrace LParen RParen Assign
  Semi Comma Ques Colon LOr LAnd BOr BXor BAnd StrictEq AbstractEq
  StrictNEq AbstractNEq LShift RShift SpRShift LEq LT GEq GT PlusPlus MinusMinus
- Plus Minus Times Div Mod Exclamation Tilde Period LBrack RBrack
+ Plus Minus Times Div Mod Exclamation Tilde Period LBrack RBrack Arrow Unit
 
 %token EOF
 
@@ -81,6 +81,7 @@ catches
 
 ids
   : { [] }
+  | Unit { [] }
   | Id { [$1] }
   | Id Comma ids { $1 :: $3 }
 
@@ -135,10 +136,16 @@ primary_expr :
 member_expr
   : primary_expr 
       { $1 }
+  | Function Unit body=src_elt_block
+    { FuncExpr (Pos.real ($startpos, $endpos), [], body) }
   | Function LParen ids RParen body=src_elt_block
     { FuncExpr (Pos.real ($startpos, $endpos), $3, body) }
+  | Function Id Unit body=src_elt_block
+    { NamedFuncExpr (Pos.real ($startpos, $endpos), $2, [], body) }
   | Function Id LParen ids RParen body=src_elt_block
     { NamedFuncExpr (Pos.real ($startpos, $endpos), $2, $4, body) } 
+  | Unit Arrow body=src_elt_block
+    { FuncExpr (Pos.real ($startpos, $endpos), [], body) }
   | member_expr Period Id
       { DotExpr (Pos.real ($startpos, $endpos), $1, $3) } 
   | member_expr LBrack expr RBrack
@@ -156,6 +163,10 @@ new_expr
 call_expr
   : member_expr LParen exprs RParen
       { CallExpr (Pos.real ($startpos, $endpos),$1,$3) }
+  | member_expr Unit
+      { CallExpr (Pos.real ($startpos, $endpos),$1,[]) }
+  | call_expr Unit
+      { CallExpr (Pos.real ($startpos, $endpos),$1,[]) }
   | call_expr LParen exprs RParen
       { CallExpr (Pos.real ($startpos, $endpos),$1,$3) }
   | call_expr LBrack expr RBrack 
@@ -425,6 +436,8 @@ src_elts
 
 src_elt
   : stmt { $1 }
+  | Function Id Unit src_elt_block
+    { FuncStmt (Pos.real ($startpos, $endpos), $2, [], $4) }
   | Function Id LParen ids RParen src_elt_block
     { FuncStmt (Pos.real ($startpos, $endpos), $2, $4, $6) } 
 

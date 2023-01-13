@@ -8,3 +8,7 @@ setup.data
 *.byte
 lib/javascript-parser.mldylib
 top
+*.js
+old/
+pretty/
+yuicompressor-2.4.8.jar

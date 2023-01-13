@@ -17,5 +17,5 @@ test:
 clean:
 	$(SETUP) -distclean
 
-top:
+top: build _build/lib/javascript-parser.cma
 	ocamlmktop -o $@ unix.cma _build/lib/javascript-parser.cma
