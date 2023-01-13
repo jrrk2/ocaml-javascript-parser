@@ -23,4 +23,4 @@ false: annot, bin_annot
 <testtool/*.ml{,i,y}>: pkg_unix
 <testtool/*.ml{,i,y}>: use_javascript-parser
 # OASIS_STOP
-true : use_menhir, trace
+true : use_menhir
