@@ -1,12 +1,243 @@
+#print_length 1000000;;
+#print_depth 1000000;;
 #directory "_build/lib"
+#load "words.cmo";;
 
 open JavaScript
+open JavaScript_syntax
+
+let dbgerr = ref ""
 
 let parse path =
-    (try 
-       parse_javascript_from_channel (open_in path) path
+    (let fd = open_in path in try 
+       let rslt = parse_javascript_from_channel fd path in
+       close_in fd;
+       rslt
      with exn ->
-      (Format.printf "Exception parsing %s (%s)\n%!" path (Printexc.to_string exn);
-       exit 2))
+      (close_in fd;
+       let err = Printexc.to_string exn in
+       dbgerr := err;
+       let a,b,c,d = try Scanf.sscanf err "Failure(%[^:]:%d:%d-%d" (fun a b c d -> (a,b,c,d)) with _ -> err,0,0,0 in
+       JavaScript_syntax.Prog
+         (({Lexing.pos_fname = path; pos_lnum = b; pos_bol = c; pos_cnum = d},
+           {Lexing.pos_fname = a; pos_lnum = b; pos_bol = c; pos_cnum = d},
+         false),[])))
 
-let rslt = parse "tests/parse/add.js";;
+let parse' ix path = print_endline (string_of_int ix);
+  Sys.command("../node_modules/.bin/js-beautify "^path^" | java -jar yuicompressor-2.4.8.jar --nomunge --preserve-semi --type js | ../node_modules/.bin/js-beautify > js"^string_of_int ix^".js")
+
+let parse'' ix path = print_endline (string_of_int ix);
+  Sys.command("../node_modules/.bin/js-beautify "^path^" > js"^string_of_int ix^".js")
+
+let rslt () = List.mapi parse'' [
+"tests/ecoop2010/Tests/Operators/11.4.1-001.js";
+"tests/ecoop2010/Tests/Operators/shell.js";
+"tests/ecoop2010/Tests/Operators/11.13.1-002.js";
+"tests/ecoop2010/Tests/Operators/11.4.1-002.js";
+"tests/ecoop2010/Tests/Array/regress-430717.js";
+"tests/ecoop2010/Tests/Array/shell.js";
+"tests/ecoop2010/Tests/Array/regress-421325.js";
+"tests/ecoop2010/Tests/Array/15.4.4.11-01.js";
+"tests/ecoop2010/Tests/Array/15.4.4.3-1.js";
+"tests/ecoop2010/Tests/Array/regress-488989.js";
+"tests/ecoop2010/Tests/Exceptions/shell.js";
+"tests/ecoop2010/Tests/Exceptions/regress-58946.js";
+"tests/ecoop2010/Tests/shell.js";
+"tests/ecoop2010/Tests/String/shell.js";
+"tests/ecoop2010/Tests/String/regress-313567.js";
+"tests/ecoop2010/Tests/Regress/regress-469937.js";
+"tests/ecoop2010/Tests/Regress/shell.js";
+"tests/ecoop2010/Tests/Regress/regress-441477-01.js";
+"tests/ecoop2010/Tests/Regress/regress-420087.js";
+"tests/ecoop2010/Tests/FunExpr/shell.js";
+"tests/ecoop2010/Tests/FunExpr/regress-518103.js";
+"tests/ecoop2010/Tests/FunExpr/fe-002.js";
+"tests/ecoop2010/Tests/Object/class-001.js";
+"tests/ecoop2010/Tests/Object/class-002.js";
+"tests/ecoop2010/Tests/Object/regress-79129-001.js";
+"tests/ecoop2010/Tests/Object/regress-459405.js";
+"tests/ecoop2010/Tests/Object/shell.js";
+"tests/ecoop2010/Tests/Object/class-004.js";
+"tests/ecoop2010/Tests/Object/8.6.2.6-001.js";
+"tests/ecoop2010/Tests/Object/regress-361274.js";
+"tests/ecoop2010/Tests/Object/class-005.js";
+"tests/ecoop2010/Tests/Object/class-003.js";
+"tests/ecoop2010/Tests/ExecutionContexts/10.1.3.js";
+"tests/ecoop2010/Tests/ExecutionContexts/shell.js";
+"tests/ecoop2010/Tests/ExecutionContexts/regress-448595-01.js";
+"tests/ecoop2010/Tests/ExecutionContexts/regress-23346.js";
+"tests/ecoop2010/Tests/Expressions/11.10-02.js";
+"tests/ecoop2010/Tests/Expressions/11.7.3-01.js";
+"tests/ecoop2010/Tests/Expressions/shell.js";
+"tests/ecoop2010/Tests/Expressions/11.10-03.js";
+"tests/ecoop2010/Tests/Expressions/11.7.2-01.js";
+"tests/ecoop2010/Tests/Expressions/11.10-01.js";
+"tests/ecoop2010/Tests/Expressions/11.7.1-01.js";
+"tests/ecoop2010/Tests/Function/regress-97921.js";
+"tests/ecoop2010/Tests/Function/arguments-001.js";
+"tests/ecoop2010/Tests/Function/shell.js";
+"tests/ecoop2010/Tests/Function/scope-002.js";
+"tests/ecoop2010/Tests/Function/regress-94506.js";
+"tests/ecoop2010/Tests/Function/regress-137181.js";
+"tests/ecoop2010/Tests/Function/arguments-002.js";
+"tests/ecoop2010/Tests/Statements/regress-131348.js";
+"tests/ecoop2010/Tests/Statements/12.10-01.js";
+"tests/ecoop2010/Tests/Statements/shell.js";
+"tests/ecoop2010/Tests/Statements/regress-74474-001.js";
+"tests/ecoop2010/Tests/Statements/12.6.3.js";
+"tests/ecoop2010/Tests/Statements/switch-001.js";
+"tests/ecoop2010/Tests/Statements/regress-226517.js";
+"tests/ecoop2010/Tests/Statements/regress-83532-001.js";
+"tests/ecoop2010/Tests/Number/shell.js";
+"tests/ecoop2010/Tests/Number/15.7.4.3-02.js";
+"tests/eval_es5/array-to-string.js";
+"tests/eval_es5/seal.js";
+"tests/eval_es5/while.js";
+"tests/eval_es5/seal2.js";
+"tests/eval_es5/array-literal.js";
+"tests/eval_es5/obj-to-string.js";
+"tests/eval_es5/plus-simple.js";
+"tests/eval_es5/constuctor.js";
+"tests/eval_es5/freeze1.js";
+"tests/eval_es5/get-and-assign.js";
+"tests/eval_es5/getOwnPropertyDescriptor.js";
+"tests/eval_es5/freeze2.js";
+"tests/eval_es5/plus-objects.js";
+"tests/eval_es5/do-while.js";
+"tests/parse/neg.js";
+"tests/parse/object-lit-2.js";
+"tests/parse/numbers.js";
+"tests/parse/add.js";
+"tests/parse/prefix-chain.js";
+"tests/parse/strings.js";
+"tests/parse/object-lit-1.js";
+"tests/parse/do-while.js";
+];;
+
+let rslt' = 
+  let dir = Unix.opendir "." in
+  let lst = ref [] in
+  (try while true do let str = Unix.readdir dir in let len = String.length str in if len > 3 && String.sub str (String.length str - 3) 3 = ".js" then lst := str :: !lst; done;
+  with e -> Unix.closedir dir);
+  let lst = List.sort compare !lst in
+  List.map parse lst
+
+let friendtab = Hashtbl.create 65535
+
+let fr id =
+  if Hashtbl.mem friendtab id then
+    Hashtbl.find friendtab id
+  else
+    let ix = Hashtbl.hash id in
+    let str = Hashtbl.find Words.h (ix mod (Hashtbl.length Words.h)) in
+    let _ = Hashtbl.add friendtab id str in
+    str
+
+let travconst = function
+  | CString(string) -> "\""^string^"\""
+  | CRegexp(string, bool, bool') -> "regexp"
+  | CNum(float) -> string_of_float float
+  | CInt(int) -> string_of_int int
+  | CBool(bool) -> string_of_bool bool
+  | CNull -> "null"
+  | CUndefined -> "undefined"
+
+let dbgexpr = ref None
+let verbose = ref false
+
+let travunary = function
+  | PrefixInc -> "++"
+  | PrefixDec -> "--"
+  | PostfixInc -> "++"
+  | PostfixDec -> "--"
+
+let travinfix = function
+  | OpLT -> "<"
+  | OpLEq  -> "<="
+  | OpGT  -> ">"
+  | OpGEq   -> ">="
+  | OpIn -> "In"
+  | OpInstanceof -> "Of"
+  | OpEq -> "=="
+  | OpNEq -> "!="
+  | OpStrictEq -> "=="
+  | OpStrictNEq -> "!=="
+  | OpLAnd -> "&&"
+  | OpLOr  -> "||"
+  | OpMul -> "*"
+  | OpDiv -> "/"
+  | OpMod -> "%"
+  | OpSub -> "-"
+  | OpLShift -> ">>"
+  | OpSpRShift -> "<<"
+  | OpZfRShift -> "<<"
+  | OpBAnd -> "&"
+  | OpBXor -> "^"
+  | OpBOr -> "|"
+  | OpAdd -> "+"
+
+let travprefix = function
+  | PrefixLNot -> "~"
+  | PrefixBNot -> "!"
+  | PrefixPlus -> "+"
+  | PrefixMinus -> "-"
+  | PrefixTypeof -> "Typeof "
+  | PrefixVoid -> "Void "
+  | PrefixDelete -> "Delete "
+
+let rec travexpr ind = function
+  | ConstExpr(pos_t, const) -> (* if !verbose then print_endline (ind^"ConstExpr"); *) travconst const
+  | ArrayExpr(pos_t, expr_lst) -> (* if !verbose then print_endline (ind^"ArrayExpr"); *) "["^String.concat "; " (List.map (travexpr ("  "^ind)) (expr_lst))^"]"
+  | ObjectExpr(pos_t, lst) -> if !verbose then print_endline (ind^"ObjectExpr"); String.concat " " (List.map (fun (pos_t, prop, expr) -> "") lst)
+  | ThisExpr(pos_t) -> if !verbose then print_endline (ind^"ThisExpr"); "this"
+  | VarExpr(pos_t, id) -> if !verbose then print_endline (ind^"VarExpr"); fr id
+  | DotExpr(pos_t, expr, id) -> if !verbose then print_endline (ind^"DotExpr"); travexpr ind expr ^ "." ^ fr id
+  | BracketExpr(pos_t, expr, expr') -> if !verbose then print_endline (ind^"BracketExpr"); travexpr ind expr ^ travexpr ind expr'
+  | NewExpr(pos_t, expr, expr_lst) -> if !verbose then print_endline (ind^"NewExpr"); String.concat " " (List.map (travexpr ind) (expr::expr_lst))
+  | PrefixExpr(pos_t, prefixOp, expr) -> if !verbose then print_endline (ind^"PrefixExpr"); travprefix prefixOp ^ travexpr ind expr
+  | UnaryAssignExpr(pos_t, unaryAssignOp, lvalue) -> if !verbose then print_endline (ind^"UnaryAssignExpr"); travunary unaryAssignOp ^ travlvalue ind lvalue
+  | InfixExpr(pos_t, infixOp, expr, expr') -> if !verbose then print_endline (ind^"InfixExpr"); travexpr ind expr ^ travinfix infixOp ^ travexpr ind expr'
+  | IfExpr(pos_t, expr, expr', expr'') -> if !verbose then print_endline (ind^"IfExpr"); (travexpr ind expr^" "^travexpr ind expr'^" "^travexpr ind expr'')
+  | AssignExpr(pos_t, assignOp, lvalue, expr) -> if !verbose then print_endline (ind^"AssignExpr"); travlvalue ind lvalue^travexpr ind expr
+  | ParenExpr(pos_t, expr) -> if !verbose then print_endline (ind^"ParenExpr"); "("^travexpr ind expr^")"
+  | ListExpr(pos_t, expr, expr') -> if !verbose then print_endline (ind^"ListExpr"); (travexpr ind expr^" "^travexpr ind expr')
+  | CallExpr(pos_t, expr, expr_lst) -> if !verbose then print_endline (ind^"CallExpr"); String.concat " " (List.map (travexpr ind) (expr::expr_lst))
+  | FuncExpr(pos_t, id_lst, stmt) -> if !verbose then print_endline (ind^"FuncExpr"); String.concat ", " (List.map fr id_lst)^" "^travstmt ind stmt
+  | NamedFuncExpr(pos_t, id, id_lst, stmt) -> if !verbose then print_endline (ind^"NamedFuncExpr"); ""
+
+and travlvalue ind = function
+  | VarLValue(pos_t, id) -> fr id
+  | DotLValue(pos_t, expr, id) -> travexpr ind expr ^ "." ^ fr id
+  | BracketLValue(pos_t, expr, expr') -> travexpr ind expr ^ " " ^ travexpr ind expr'
+
+and varDecl ind = function
+  | VarDeclNoInit (pos_t, id) -> (ind^fr id)
+  | VarDecl (pos_t, id, expr) -> (ind^fr id^" = "^travexpr ind expr)
+
+and travstmt ind = function
+  | BlockStmt(pos_t, stmt_lst) -> if !verbose then print_endline (ind^"BlockStmt"); String.concat "; " (List.map (travstmt ("  "^ind)) stmt_lst)
+  | EmptyStmt(pos_t  ) -> (ind^"EmptyStmt")
+  | ExprStmt(expr) -> (ind^"ExprStmt "^travexpr ind expr)
+  | IfStmt(pos_t, expr, stmt, stmt') -> (ind^"IfStmt") ^ travstmt ("  "^ind) stmt ^ travstmt ("  "^ind) stmt'
+  | IfSingleStmt(pos_t, expr, stmt) -> (ind^"IfSingleStmt") ^ travstmt ("  "^ind) stmt
+  | SwitchStmt(pos_t, expr, caseClause_lst) -> (ind^"SwitchStmt")
+  | WhileStmt(pos_t, expr, stmt) -> (ind^"WhileStmt") ^ travstmt ("  "^ind) stmt
+  | DoWhileStmt(pos_t, stmt, expr) -> (ind^"DoWhileStmt") ^ travstmt ("  "^ind) stmt
+  | BreakStmt(pos_t) -> (ind^"BreakStmt")
+  | BreakToStmt(pos_t, id) -> (ind^"BreakToStmt")
+  | ContinueStmt(pos_t) -> (ind^"ContinueStmt")
+  | ContinueToStmt(pos_t, id) -> (ind^"ContinueToStmt")
+  | LabelledStmt(pos_t, id, stmt) -> (ind^"LabelledStmt") ^ travstmt ("  "^ind) stmt
+  | ForInStmt(pos_t, forInInit, expr, stmt) -> (ind^"ForInStmt") ^ travstmt ("  "^ind) stmt
+  | ForStmt(pos_t, forInit, expr, expr', stmt) -> (ind^"ForStmt") ^ travstmt ("  "^ind) stmt
+  | TryStmt(pos_t, stmt, catch_lst, stmt') -> (ind^"TryStmt") ^ travstmt ("  "^ind) stmt ^ travstmt ("  "^ind) stmt'
+  | ThrowStmt(pos_t, expr) -> (ind^"ThrowStmt")
+  | ReturnStmt(pos_t, expr) -> (ind^"ReturnStmt")
+  | WithStmt(pos_t, expr, stmt) -> (ind^"WithStmt") ^ travstmt ("  "^ind) stmt
+  | VarDeclStmt(pos_t, varDecl_lst) -> (ind^"VarDeclStmt")^ String.concat ", " (List.map (varDecl ("  "^ind)) varDecl_lst)
+  | FuncStmt(pos_t, id, id_lst, stmt) -> (ind^"FuncStmt") ^ travstmt ("  "^ind) stmt
+  
+let traverse = function
+  | Prog (pos,lst) -> print_endline (String.concat "; " (List.map (travstmt "") lst))
+
+let _ = traverse (List.hd rslt');;
