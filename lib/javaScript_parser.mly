@@ -68,8 +68,9 @@ exprs
   | assign_expr Comma exprs { $1::$3 }
 
 stmts
-  : { [] }
-  | stmt stmts { $1 :: $2 }
+  : stmt { [$1] }
+  | stmt Semi { [$1] }
+  | stmt Semi stmts { $1 :: $3 }
 
 cases
   : { [] }
@@ -88,6 +89,9 @@ ids
 prop
   : Id { PropId $1 }  %prec GreaterThanColon
   | String { PropString $1 }
+  | Int { PropString (string_of_int $1) }
+  | Default { PropString "default" }
+  | True { PropString "true" }
 
 fields
   : { [] }
@@ -129,6 +133,8 @@ primary_expr :
       { ArrayExpr (Pos.real ($startpos, $endpos),$2) }
   | LBrace fields RBrace
       { ObjectExpr (Pos.real ($startpos, $endpos),$2) }
+  | LBrace fields Semi RBrace
+      { ObjectExpr (Pos.real ($startpos, $endpos),$2) }
   | LParen expr RParen
       { ParenExpr (Pos.real ($startpos, $endpos),$2) }
   | This { ThisExpr (Pos.real ($startpos, $endpos)) }
@@ -148,6 +154,10 @@ member_expr
     { FuncExpr (Pos.real ($startpos, $endpos), [], body) }
   | member_expr Period Id
       { DotExpr (Pos.real ($startpos, $endpos), $1, $3) } 
+  | member_expr Period Return
+      { DotExpr (Pos.real ($startpos, $endpos), $1, "return") } 
+  | member_expr Period Default
+      { DotExpr (Pos.real ($startpos, $endpos), $1, "default") } 
   | member_expr LBrack expr RBrack
       { BracketExpr (Pos.real ($startpos, $endpos),$1,$3) }
   | New member_expr LParen exprs RParen 
@@ -377,19 +387,18 @@ opt_expr :
   | { ConstExpr (Pos.real ($startpos, $endpos), CUndefined) }
   | expr { $1 }
 
-stmt : 
+stmt
+  : Semi { EmptyStmt (Pos.real ($startpos, $endpos)) }
   | LBrace stmts RBrace
       { BlockStmt (Pos.real ($startpos, $endpos), $2) }
-  | Semi 
-      { EmptyStmt (Pos.real ($startpos, $endpos)) }
-  | expr Semi
+  | expr
       { match $1 with
           | NamedFuncExpr (p, x, args, body) -> FuncStmt (p, x, args, body)
           | e -> ExprStmt e 
       }
-  | Continue Semi 
+  | Continue
       { ContinueStmt (Pos.real ($startpos, $endpos)) }
-  | ContinueId Semi 
+  | ContinueId
       { ContinueToStmt (Pos.real ($startpos, $endpos),$1) }
   | If LParen expr  RParen stmt  %prec LowerThanElse
     { IfSingleStmt (Pos.real ($startpos, $endpos), $3, $5) }
@@ -400,11 +409,11 @@ stmt :
       { SwitchStmt (Pos.real ($startpos, $endpos),$2,$4) }
   | While paren_expr stmt
       { WhileStmt (Pos.real ($startpos, $endpos),$2,$3) }
-  | Do block While paren_expr Semi
+  | Do block While paren_expr
       { DoWhileStmt (Pos.real ($startpos, $endpos),$2,$4) }
-  | Break  Semi
+  | Break
       { BreakStmt (Pos.real ($startpos, $endpos)) }
-  | BreakId Semi
+  | BreakId
       { BreakToStmt (Pos.real ($startpos, $endpos),$1) }
   | Id Colon stmt { LabelledStmt (Pos.real ($startpos, $endpos), $1, $3) }
   | For LParen forInInit In expr RParen stmt
@@ -414,14 +423,14 @@ stmt :
   | Try block catches
     { TryStmt (Pos.real ($startpos, $endpos),$2,$3,EmptyStmt (Pos.real ($startpos, $endpos))) }
   | Try block catches Finally block { TryStmt (Pos.real ($startpos, $endpos),$2,$3,$5) }
-  | Throw expr Semi 
+  | Throw expr
       { ThrowStmt (Pos.real ($startpos, $endpos),$2) }
-  | Return Semi 
+  | Return
       { ReturnStmt (Pos.real ($startpos, $endpos),
                     ConstExpr (Pos.real ($startpos, $endpos), CUndefined)) }
-  | Return expr Semi 
+  | Return expr
       { ReturnStmt (Pos.real ($startpos, $endpos),$2) } 
-  | Var varDecls Semi
+  | Var varDecls
       { VarDeclStmt (Pos.real ($startpos, $endpos),$2) }
   | With LParen expr RParen stmt
       { WithStmt (Pos.real ($startpos, $endpos), $3, $5) }
@@ -431,7 +440,9 @@ src_elt_block
       { BlockStmt (Pos.real ($startpos, $endpos),$2) }
  
 src_elts
-  : { [] }
+  : src_elt { [$1] }
+  | src_elt Semi { [$1] }
+  | src_elt Semi src_elts { $1::$3 }
   | src_elt src_elts { $1::$2 }
 
 src_elt

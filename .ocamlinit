@@ -1,7 +1,7 @@
-#print_length 1000000;;
-#print_depth 1000000;;
+#print_length 1000;;
+#print_depth 1000;;
 #directory "_build/lib"
-#load "words.cmo";;
+#load "_build/lib/words.cmo";;
 
 open JavaScript
 open JavaScript_syntax
@@ -23,118 +23,38 @@ let parse path =
            {Lexing.pos_fname = a; pos_lnum = b; pos_bol = c; pos_cnum = d},
          false),[])))
 
+(*  -e 's=}=;}=g' -e 's=;\\(})[^,]\\)=\\1=g' *)
+(*
 let parse' ix path = print_endline (string_of_int ix);
-  Sys.command("../node_modules/.bin/js-beautify "^path^" | java -jar yuicompressor-2.4.8.jar --nomunge --preserve-semi --type js | ../node_modules/.bin/js-beautify > js"^string_of_int ix^".js")
+  if Sys.command("../node_modules/.bin/js-beautify "^path^" | sed -e 's=\206\148=delta_=g' -e 's=\207\136=psy_=g' -e 's=\206\169=omega_=g' -e 's=\206\181=epsilon_=g' -e 's=\207\129=rho_=g' -e 's=\207\131=sigma_=g' -e 's=\207\132=tau_=g' > js"^string_of_int ix^".js") = 1 then
+  Sys.command("js-beautify "^path^" > js"^string_of_int ix^".js")
+  else 1
+*)
 
-let parse'' ix path = print_endline (string_of_int ix);
-  Sys.command("../node_modules/.bin/js-beautify "^path^" > js"^string_of_int ix^".js")
-
-let rslt () = List.mapi parse'' [
-"tests/ecoop2010/Tests/Operators/11.4.1-001.js";
-"tests/ecoop2010/Tests/Operators/shell.js";
-"tests/ecoop2010/Tests/Operators/11.13.1-002.js";
-"tests/ecoop2010/Tests/Operators/11.4.1-002.js";
-"tests/ecoop2010/Tests/Array/regress-430717.js";
-"tests/ecoop2010/Tests/Array/shell.js";
-"tests/ecoop2010/Tests/Array/regress-421325.js";
-"tests/ecoop2010/Tests/Array/15.4.4.11-01.js";
-"tests/ecoop2010/Tests/Array/15.4.4.3-1.js";
-"tests/ecoop2010/Tests/Array/regress-488989.js";
-"tests/ecoop2010/Tests/Exceptions/shell.js";
-"tests/ecoop2010/Tests/Exceptions/regress-58946.js";
-"tests/ecoop2010/Tests/shell.js";
-"tests/ecoop2010/Tests/String/shell.js";
-"tests/ecoop2010/Tests/String/regress-313567.js";
-"tests/ecoop2010/Tests/Regress/regress-469937.js";
-"tests/ecoop2010/Tests/Regress/shell.js";
-"tests/ecoop2010/Tests/Regress/regress-441477-01.js";
-"tests/ecoop2010/Tests/Regress/regress-420087.js";
-"tests/ecoop2010/Tests/FunExpr/shell.js";
-"tests/ecoop2010/Tests/FunExpr/regress-518103.js";
-"tests/ecoop2010/Tests/FunExpr/fe-002.js";
-"tests/ecoop2010/Tests/Object/class-001.js";
-"tests/ecoop2010/Tests/Object/class-002.js";
-"tests/ecoop2010/Tests/Object/regress-79129-001.js";
-"tests/ecoop2010/Tests/Object/regress-459405.js";
-"tests/ecoop2010/Tests/Object/shell.js";
-"tests/ecoop2010/Tests/Object/class-004.js";
-"tests/ecoop2010/Tests/Object/8.6.2.6-001.js";
-"tests/ecoop2010/Tests/Object/regress-361274.js";
-"tests/ecoop2010/Tests/Object/class-005.js";
-"tests/ecoop2010/Tests/Object/class-003.js";
-"tests/ecoop2010/Tests/ExecutionContexts/10.1.3.js";
-"tests/ecoop2010/Tests/ExecutionContexts/shell.js";
-"tests/ecoop2010/Tests/ExecutionContexts/regress-448595-01.js";
-"tests/ecoop2010/Tests/ExecutionContexts/regress-23346.js";
-"tests/ecoop2010/Tests/Expressions/11.10-02.js";
-"tests/ecoop2010/Tests/Expressions/11.7.3-01.js";
-"tests/ecoop2010/Tests/Expressions/shell.js";
-"tests/ecoop2010/Tests/Expressions/11.10-03.js";
-"tests/ecoop2010/Tests/Expressions/11.7.2-01.js";
-"tests/ecoop2010/Tests/Expressions/11.10-01.js";
-"tests/ecoop2010/Tests/Expressions/11.7.1-01.js";
-"tests/ecoop2010/Tests/Function/regress-97921.js";
-"tests/ecoop2010/Tests/Function/arguments-001.js";
-"tests/ecoop2010/Tests/Function/shell.js";
-"tests/ecoop2010/Tests/Function/scope-002.js";
-"tests/ecoop2010/Tests/Function/regress-94506.js";
-"tests/ecoop2010/Tests/Function/regress-137181.js";
-"tests/ecoop2010/Tests/Function/arguments-002.js";
-"tests/ecoop2010/Tests/Statements/regress-131348.js";
-"tests/ecoop2010/Tests/Statements/12.10-01.js";
-"tests/ecoop2010/Tests/Statements/shell.js";
-"tests/ecoop2010/Tests/Statements/regress-74474-001.js";
-"tests/ecoop2010/Tests/Statements/12.6.3.js";
-"tests/ecoop2010/Tests/Statements/switch-001.js";
-"tests/ecoop2010/Tests/Statements/regress-226517.js";
-"tests/ecoop2010/Tests/Statements/regress-83532-001.js";
-"tests/ecoop2010/Tests/Number/shell.js";
-"tests/ecoop2010/Tests/Number/15.7.4.3-02.js";
-"tests/eval_es5/array-to-string.js";
-"tests/eval_es5/seal.js";
-"tests/eval_es5/while.js";
-"tests/eval_es5/seal2.js";
-"tests/eval_es5/array-literal.js";
-"tests/eval_es5/obj-to-string.js";
-"tests/eval_es5/plus-simple.js";
-"tests/eval_es5/constuctor.js";
-"tests/eval_es5/freeze1.js";
-"tests/eval_es5/get-and-assign.js";
-"tests/eval_es5/getOwnPropertyDescriptor.js";
-"tests/eval_es5/freeze2.js";
-"tests/eval_es5/plus-objects.js";
-"tests/eval_es5/do-while.js";
-"tests/parse/neg.js";
-"tests/parse/object-lit-2.js";
-"tests/parse/numbers.js";
-"tests/parse/add.js";
-"tests/parse/prefix-chain.js";
-"tests/parse/strings.js";
-"tests/parse/object-lit-1.js";
-"tests/parse/do-while.js";
-];;
-
-let rslt' = 
+let crnt' () = 
   let dir = Unix.opendir "." in
   let lst = ref [] in
   (try while true do let str = Unix.readdir dir in let len = String.length str in if len > 3 && String.sub str (String.length str - 3) 3 = ".js" then lst := str :: !lst; done;
   with e -> Unix.closedir dir);
-  let lst = List.sort compare !lst in
+  List.sort compare !lst
+
+let rslt' lst = 
   List.map parse lst
 
 let friendtab = Hashtbl.create 65535
+let ftab = Hashtbl.create 65535
 
 let fr id =
   if Hashtbl.mem friendtab id then
     Hashtbl.find friendtab id
   else
     let ix = Hashtbl.hash id in
-    let str = Hashtbl.find Words.h (ix mod (Hashtbl.length Words.h)) in
+    let str = if String.length id > 3 && String.sub id 0 3 = "_0x" then Hashtbl.find Words.h (ix mod (Hashtbl.length Words.h)) else id in
     let _ = Hashtbl.add friendtab id str in
     str
 
 let travconst = function
-  | CString(string) -> "\""^string^"\""
+  | CString(string) -> "'"^string^"'"
   | CRegexp(string, bool, bool') -> "regexp"
   | CNum(float) -> string_of_float float
   | CInt(int) -> string_of_int int
@@ -217,7 +137,7 @@ and varDecl ind = function
 and travstmt ind = function
   | BlockStmt(pos_t, stmt_lst) -> if !verbose then print_endline (ind^"BlockStmt"); String.concat "; " (List.map (travstmt ("  "^ind)) stmt_lst)
   | EmptyStmt(pos_t  ) -> (ind^"EmptyStmt")
-  | ExprStmt(expr) -> (ind^"ExprStmt "^travexpr ind expr)
+  | ExprStmt(expr) -> travexpr ind expr
   | IfStmt(pos_t, expr, stmt, stmt') -> (ind^"IfStmt") ^ travstmt ("  "^ind) stmt ^ travstmt ("  "^ind) stmt'
   | IfSingleStmt(pos_t, expr, stmt) -> (ind^"IfSingleStmt") ^ travstmt ("  "^ind) stmt
   | SwitchStmt(pos_t, expr, caseClause_lst) -> (ind^"SwitchStmt")
@@ -230,14 +150,33 @@ and travstmt ind = function
   | LabelledStmt(pos_t, id, stmt) -> (ind^"LabelledStmt") ^ travstmt ("  "^ind) stmt
   | ForInStmt(pos_t, forInInit, expr, stmt) -> (ind^"ForInStmt") ^ travstmt ("  "^ind) stmt
   | ForStmt(pos_t, forInit, expr, expr', stmt) -> (ind^"ForStmt") ^ travstmt ("  "^ind) stmt
-  | TryStmt(pos_t, stmt, catch_lst, stmt') -> (ind^"TryStmt") ^ travstmt ("  "^ind) stmt ^ travstmt ("  "^ind) stmt'
+  | TryStmt(pos_t, stmt, catch_lst, stmt') -> (ind^"try {") ^ travstmt ("  "^ind) stmt ^ travstmt ("  "^ind) stmt'^" } "
   | ThrowStmt(pos_t, expr) -> (ind^"ThrowStmt")
   | ReturnStmt(pos_t, expr) -> (ind^"ReturnStmt")
   | WithStmt(pos_t, expr, stmt) -> (ind^"WithStmt") ^ travstmt ("  "^ind) stmt
-  | VarDeclStmt(pos_t, varDecl_lst) -> (ind^"VarDeclStmt")^ String.concat ", " (List.map (varDecl ("  "^ind)) varDecl_lst)
-  | FuncStmt(pos_t, id, id_lst, stmt) -> (ind^"FuncStmt") ^ travstmt ("  "^ind) stmt
+  | VarDeclStmt(pos_t, varDecl_lst) -> (ind^"var ")^ String.concat ", " (List.map (varDecl ("  "^ind)) varDecl_lst)
+  | FuncStmt(pos_t, id, id_lst, stmt) as f -> let id' = fr id in Hashtbl.add ftab id' f; (ind^"function "^id'^" {\n") ^ travstmt ("  "^ind) stmt^" } "
   
 let traverse = function
-  | Prog (pos,lst) -> print_endline (String.concat "; " (List.map (travstmt "") lst))
+  | Prog (pos,lst) -> String.concat ";\n" (List.map (travstmt "") lst)
 
-let _ = traverse (List.hd rslt');;
+let find' () =
+  let lst = ref [] in
+  let pipe = Unix.open_process_in "find ../2.12.1/rootfs/usr/lib/node/prod -name \\*.js -type f" in
+  let _ = try while true do lst := input_line pipe :: !lst done with _ -> ignore (Unix.close_process_in pipe) in
+  let lst = List.sort compare !lst in
+(*
+  List.mapi parse' lst
+*)
+  List.map parse lst
+
+let dump' ast = List.map (fun itm -> (traverse itm), itm) ast;;
+
+let split' dump =
+  List.partition (function "",_ -> false | _ -> true) dump
+
+let iname = function "", JavaScript_syntax.Prog (({pos_fname = path}, _, _),[]) -> path | _ -> ""
+
+let valid',invalid' = split' (dump' (find'()));;
+
+let _ = print_endline ("valid = "^string_of_int (List.length valid')^", invalid = "^string_of_int (List.length invalid'));;
