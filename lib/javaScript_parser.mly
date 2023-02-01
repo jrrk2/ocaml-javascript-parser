@@ -25,7 +25,7 @@ let rec expr_to_lvalue (e : expr) : lvalue =  match e with
 %token <JavaScript_syntax.assignOp> AssignOp
 
 %token If Else True False New Instanceof This Null Function Typeof Void
- Delete Switch Default Case While Do Break Var In For Try Catch Finally Throw
+ Delete Switch Default Case While Do Break Var In Of For Try Catch Finally Throw
  Return With Continue
 
 %token LBrace RBrace LParen RParen Assign
@@ -48,7 +48,7 @@ let rec expr_to_lvalue (e : expr) : lvalue =  match e with
 %left BXor
 %left BAnd
 %left StrictEq StrictNEq AbstractEq AbstractNEq
-%left LT LEq GT GEq In Instanceof
+%left LT LEq GT GEq In Of Instanceof
 %left LShift RShift SpRShift
 %left Plus Minus
 %left Times Div Mod
@@ -152,6 +152,8 @@ member_expr
     { NamedFuncExpr (Pos.real ($startpos, $endpos), $2, $4, body) } 
   | Unit Arrow body=src_elt_block
     { FuncExpr (Pos.real ($startpos, $endpos), [], body) }
+  | LParen ids RParen Arrow LParen Function Unit body=stmt RParen
+    { FuncExpr (Pos.real ($startpos, $endpos), $2, body) }
   | member_expr Period Id
       { DotExpr (Pos.real ($startpos, $endpos), $1, $3) } 
   | member_expr Period Return
@@ -367,6 +369,12 @@ forInInit :
   | Var Id 
       { VarForInInit (Pos.real ($startpos, $endpos), $2) }
 
+forOfInit :
+  | Id 
+      { NoVarForOfInit (Pos.real ($startpos, $endpos), $1) }
+  | Var Id 
+      { VarForOfInit (Pos.real ($startpos, $endpos), $2) }
+
 forInit
   : { NoForInit }
   | Var varDecls_noin { VarForInit $2 }
@@ -418,6 +426,8 @@ stmt
   | Id Colon stmt { LabelledStmt (Pos.real ($startpos, $endpos), $1, $3) }
   | For LParen forInInit In expr RParen stmt
     { ForInStmt (Pos.real ($startpos, $endpos),$3,$5,$7) }
+  | For LParen forOfInit Of expr RParen stmt
+    { ForOfStmt (Pos.real ($startpos, $endpos),$3,$5,$7) }
   | For LParen forInit Semi opt_expr Semi opt_expr RParen stmt
     { ForStmt (Pos.real ($startpos, $endpos),$3,$5,$7,$9) }
   | Try block catches
@@ -438,19 +448,21 @@ stmt
 src_elt_block
   : LBrace src_elts RBrace 
       { BlockStmt (Pos.real ($startpos, $endpos),$2) }
+  | LBrace RBrace 
+      { BlockStmt (Pos.real ($startpos, $endpos), []) }
  
 src_elts
   : src_elt { [$1] }
+(*
   | src_elt Semi { [$1] }
-  | src_elt Semi src_elts { $1::$3 }
+*)
+| src_elt Semi src_elts { $1::$3 }
   | src_elt src_elts { $1::$2 }
 
 src_elt
   : stmt { $1 }
-  | Function Id Unit src_elt_block
-    { FuncStmt (Pos.real ($startpos, $endpos), $2, [], $4) }
-  | Function Id LParen ids RParen src_elt_block
-    { FuncStmt (Pos.real ($startpos, $endpos), $2, $4, $6) } 
+(*
+*)
 
 program : src_elts EOF { Prog (Pos.real ($startpos, $endpos), $1) }
 

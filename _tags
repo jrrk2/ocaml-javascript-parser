@@ -19,8 +19,6 @@ false: annot, bin_annot
 <lib/*.ml{,i,y}>: pkg_unix
 # Executable testtool
 "testtool/Main.byte": pkg_unix
-"testtool/Main.byte": use_javascript-parser
 <testtool/*.ml{,i,y}>: pkg_unix
-<testtool/*.ml{,i,y}>: use_javascript-parser
 # OASIS_STOP
 true : use_menhir

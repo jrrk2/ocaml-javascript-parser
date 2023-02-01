@@ -1,6 +1,7 @@
 #print_length 1000;;
 #print_depth 1000;;
-#directory "_build/lib"
+#directory "_build/lib";;
+#directory "/home/jonathan/.opam/4.14.0/lib/yojson";;
 #load "_build/lib/words.cmo";;
 
 open JavaScript
@@ -23,14 +24,6 @@ let parse path =
            {Lexing.pos_fname = a; pos_lnum = b; pos_bol = c; pos_cnum = d},
          false),[])))
 
-(*  -e 's=}=;}=g' -e 's=;\\(})[^,]\\)=\\1=g' *)
-(*
-let parse' ix path = print_endline (string_of_int ix);
-  if Sys.command("../node_modules/.bin/js-beautify "^path^" | sed -e 's=\206\148=delta_=g' -e 's=\207\136=psy_=g' -e 's=\206\169=omega_=g' -e 's=\206\181=epsilon_=g' -e 's=\207\129=rho_=g' -e 's=\207\131=sigma_=g' -e 's=\207\132=tau_=g' > js"^string_of_int ix^".js") = 1 then
-  Sys.command("js-beautify "^path^" > js"^string_of_int ix^".js")
-  else 1
-*)
-
 let crnt' () = 
   let dir = Unix.opendir "." in
   let lst = ref [] in
@@ -44,12 +37,21 @@ let rslt' lst =
 let friendtab = Hashtbl.create 65535
 let ftab = Hashtbl.create 65535
 
+let rec obfusc n x = if String.sub x n 3 = "_0x" then true else if String.length x > 3 + n then obfusc (n+1) x else false
+
+let obfusc x = if String.length x > 3 then obfusc 0 x else false
+
+let dbgid = ref ""
+let dbgix = ref 0
+
 let fr id =
   if Hashtbl.mem friendtab id then
     Hashtbl.find friendtab id
   else
-    let ix = Hashtbl.hash id in
-    let str = if String.length id > 3 && String.sub id 0 3 = "_0x" then Hashtbl.find Words.h (ix mod (Hashtbl.length Words.h)) else id in
+    let ix = (Hashtbl.hash id) mod (Hashtbl.length Words.h) in
+    dbgid := id;
+    dbgix := ix;
+    let str = if obfusc id then Hashtbl.find Words.h ix else id in
     let _ = Hashtbl.add friendtab id str in
     str
 
@@ -124,21 +126,29 @@ let rec travexpr ind = function
   | CallExpr(pos_t, expr, expr_lst) -> if !verbose then print_endline (ind^"CallExpr"); String.concat " " (List.map (travexpr ind) (expr::expr_lst))
   | FuncExpr(pos_t, id_lst, stmt) -> if !verbose then print_endline (ind^"FuncExpr"); String.concat ", " (List.map fr id_lst)^" "^travstmt ind stmt
   | NamedFuncExpr(pos_t, id, id_lst, stmt) -> if !verbose then print_endline (ind^"NamedFuncExpr"); ""
+  | SeqExpr (pos_t, lst) -> if !verbose then print_endline (ind^"SeqExpr");String.concat " " (List.map (travexpr ind) (lst))
+  | MemberExpr (pos_t, expr1, expr2) -> if !verbose then print_endline (ind^"MemberExpr");String.concat " " (List.map (travexpr ind) (expr1::expr2::[]))
+  | ArrowFuncExpr (pos_t, lst, stmt) -> if !verbose then print_endline (ind^"ArrowFuncExpr");String.concat " " lst ^ travstmt ind stmt
+  | TemplateExpr (pos_t, lst1, lst2) -> if !verbose then print_endline (ind^"TemplateExpr");String.concat " " (List.map (travexpr ind) (lst1@lst2))
+  | TemplateElem (pos_t, lst) -> if !verbose then print_endline (ind^"TemplateElem");String.concat " " (List.map (fun (a,b) -> a^b) lst)
+  | ClassExpr (pos_t, id1, id2, stmt) -> if !verbose then print_endline (ind^"ClassExpr");id1 ^ " " ^ id2 ^ " " ^ travstmt ind stmt
 
 and travlvalue ind = function
   | VarLValue(pos_t, id) -> fr id
   | DotLValue(pos_t, expr, id) -> travexpr ind expr ^ "." ^ fr id
   | BracketLValue(pos_t, expr, expr') -> travexpr ind expr ^ " " ^ travexpr ind expr'
-
+  | MemberLValue (pos_t, expr, expr') -> if !verbose then print_endline (ind^"MemberLValue"); travexpr ind expr ^ " " ^ travexpr ind expr'
+  
 and varDecl ind = function
   | VarDeclNoInit (pos_t, id) -> (ind^fr id)
   | VarDecl (pos_t, id, expr) -> (ind^fr id^" = "^travexpr ind expr)
-
+  | ArrayPattern (_, _) -> "ArrayPattern"
+  
 and travstmt ind = function
   | BlockStmt(pos_t, stmt_lst) -> if !verbose then print_endline (ind^"BlockStmt"); String.concat "; " (List.map (travstmt ("  "^ind)) stmt_lst)
   | EmptyStmt(pos_t  ) -> (ind^"EmptyStmt")
   | ExprStmt(expr) -> travexpr ind expr
-  | IfStmt(pos_t, expr, stmt, stmt') -> (ind^"IfStmt") ^ travstmt ("  "^ind) stmt ^ travstmt ("  "^ind) stmt'
+  | IfStmt(pos_t, expr, stmt, stmt') -> (ind^"If ") ^ travstmt ("  "^ind) stmt ^ " else " ^ travstmt ("  "^ind) stmt'
   | IfSingleStmt(pos_t, expr, stmt) -> (ind^"IfSingleStmt") ^ travstmt ("  "^ind) stmt
   | SwitchStmt(pos_t, expr, caseClause_lst) -> (ind^"SwitchStmt")
   | WhileStmt(pos_t, expr, stmt) -> (ind^"WhileStmt") ^ travstmt ("  "^ind) stmt
@@ -149,6 +159,7 @@ and travstmt ind = function
   | ContinueToStmt(pos_t, id) -> (ind^"ContinueToStmt")
   | LabelledStmt(pos_t, id, stmt) -> (ind^"LabelledStmt") ^ travstmt ("  "^ind) stmt
   | ForInStmt(pos_t, forInInit, expr, stmt) -> (ind^"ForInStmt") ^ travstmt ("  "^ind) stmt
+  | ForOfStmt(pos_t, forOfInit, expr, stmt) -> (ind^"ForOfStmt") ^ travstmt ("  "^ind) stmt
   | ForStmt(pos_t, forInit, expr, expr', stmt) -> (ind^"ForStmt") ^ travstmt ("  "^ind) stmt
   | TryStmt(pos_t, stmt, catch_lst, stmt') -> (ind^"try {") ^ travstmt ("  "^ind) stmt ^ travstmt ("  "^ind) stmt'^" } "
   | ThrowStmt(pos_t, expr) -> (ind^"ThrowStmt")
@@ -156,27 +167,382 @@ and travstmt ind = function
   | WithStmt(pos_t, expr, stmt) -> (ind^"WithStmt") ^ travstmt ("  "^ind) stmt
   | VarDeclStmt(pos_t, varDecl_lst) -> (ind^"var ")^ String.concat ", " (List.map (varDecl ("  "^ind)) varDecl_lst)
   | FuncStmt(pos_t, id, id_lst, stmt) as f -> let id' = fr id in Hashtbl.add ftab id' f; (ind^"function "^id'^" {\n") ^ travstmt ("  "^ind) stmt^" } "
-  
+  | ClassDeclStmt (_, _, _, _) -> "ClassDeclStmt"
+  | ClassBodyStmt (_, _) -> "ClassBodyStmt"
+  | MethodDefinitionStmt (_, _, _, _, _, _) -> "MethodDefinitionStmt"
+
 let traverse = function
   | Prog (pos,lst) -> String.concat ";\n" (List.map (travstmt "") lst)
+
+let acorn' f =
+  let lst = ref [] in
+  print_endline f;
+  let pipe = Unix.open_process_in ("acorn "^f) in
+  let _ = try while true do lst := input_line pipe :: !lst done with _ -> ignore (Unix.close_process_in pipe) in
+  f, (try Yojson.Safe.from_string (String.concat "\n" (List.rev !lst)) with _ -> `Null)
+
+(*
+let acornall' lst' =
+  let lst = ref [] in
+  let pipe = Unix.open_process_in ("acorn "^String.concat " " lst') in
+  let _ = try while true do lst := input_line pipe :: !lst done with _ -> ignore (Unix.close_process_in pipe) in
+  (try Yojson.Safe.from_string (String.concat "\n" (List.rev !lst)) with _ -> `Null)
+*)
 
 let find' () =
   let lst = ref [] in
   let pipe = Unix.open_process_in "find ../2.12.1/rootfs/usr/lib/node/prod -name \\*.js -type f" in
   let _ = try while true do lst := input_line pipe :: !lst done with _ -> ignore (Unix.close_process_in pipe) in
-  let lst = List.sort compare !lst in
+  List.sort compare !lst
+
 (*
   List.mapi parse' lst
-*)
   List.map parse lst
+  List.map acorn' lst
+*)
 
 let dump' ast = List.map (fun itm -> (traverse itm), itm) ast;;
 
-let split' dump =
-  List.partition (function "",_ -> false | _ -> true) dump
+type json' = (string * Yojson.Safe.t) list
 
-let iname = function "", JavaScript_syntax.Prog (({pos_fname = path}, _, _),[]) -> path | _ -> ""
+let find() =
+    let json = List.map acorn' (find' ()) in
+    let valid', invalid' = List.partition (function (_,`Null) -> false | _ -> true) json in
+    let _ = print_endline ("valid = "^string_of_int (List.length valid')^", invalid = "^string_of_int (List.length invalid')) in
+    let fd = open_out "json.mar" in
+    Marshal.to_channel fd (valid':json') [No_sharing];
+    close_out fd
 
-let valid',invalid' = split' (dump' (find'()));;
+let json () = 
+  let fd = open_in "json.mar" in
+  let (json:json') = Marshal.from_channel fd in
+  close_in fd;
+  json
 
-let _ = print_endline ("valid = "^string_of_int (List.length valid')^", invalid = "^string_of_int (List.length invalid'));;
+let othlab = ref []
+let othlst = ref []
+let othreg = ref None
+let othdecl = ref []
+let othofinit = ref []
+let othininit = ref []
+let othlst' = ref []
+let otht = ref `Null
+let othc = ref `Null
+let othf = ref `Null
+let othj = ref `Null
+let othel = ref `Null
+let othblk = ref `Null
+let othitm = ref `Null
+let othop = ref ""
+let othl = ref None
+let othr = ref `Null
+let oths = ref None
+let othd = ref None
+let othd' = ref None
+
+let pos attr lo hi = ({Lexing.pos_fname=attr; pos_lnum = 1; pos_bol = 0; pos_cnum = lo}, {Lexing.pos_fname=""; pos_lnum = 1; pos_bol = 0; pos_cnum = hi}, false)
+let rwuaop attr prefix = function
+  | `String "++" -> if prefix then PrefixInc else PostfixInc 
+  | `String "--" -> if prefix then PrefixDec else PostfixDec
+  | oth -> othj := oth; failwith "rwuaop"
+
+let rwuop attr = function
+| `String "!" -> PrefixLNot 
+| `String "~" -> PrefixBNot 
+| `String "+" -> PrefixPlus
+| `String "-" -> PrefixMinus 
+| `String "typeof" -> PrefixTypeof 
+| `String "void" -> PrefixVoid 
+| `String "delete" -> PrefixDelete
+| oth -> othj := oth; failwith "rwuop"
+
+let rwifop attr = function
+| `String "<" -> OpLT 
+| `String "<=" -> OpLEq 
+| `String ">" -> OpGT 
+| `String ">=" -> OpGEq  
+| `String "in" -> OpIn
+| `String "==" -> OpEq
+| `String "!=" -> OpNEq
+| `String "===" -> OpStrictEq
+| `String "!==" -> OpStrictNEq
+| `String "&&" -> OpLAnd
+| `String "||" -> OpLOr 
+| `String "*"  -> OpMul
+| `String "/" -> OpDiv
+| `String "%" -> OpMod
+| `String "-"  -> OpSub
+| `String "<<" -> OpLShift
+| `String ">>" -> OpSpRShift
+| `String ">>>" -> OpZfRShift
+| `String "&" -> OpBAnd
+| `String "^" -> OpBXor
+| `String "|" -> OpBOr
+| `String "+" -> OpAdd
+| `String "instanceof" -> OpInstanceof
+| oth -> othj := oth; failwith "rwifop"
+
+let rec rwid attr = function
+| `Assoc (("type", `String "Identifier") :: ("start", `Int lo) :: ("end", `Int hi) :: ("name", `String nam) :: []) -> fr nam
+| `Assoc (("type", `String "ThisExpression") :: ("start", `Int lo) :: ("end", `Int hi) :: []) -> "this"
+| `Assoc (("type", `String "AssignmentPattern") :: ("start", `Int lo) :: ("end", `Int hi) :: ("left", id') :: ("right", obj) :: []) -> rwid attr id'
+| `Assoc (("type", `String "RestElement") :: ("start", `Int lo) :: ("end", `Int hi) :: ("argument", id') :: []) -> rwid attr id'
+| `Assoc (("type", `String "MemberExpression") :: ("start", `Int 314) :: ("end", `Int 329) :: ("object", id) :: ("property", id') :: ("computed", `Bool isc) :: ("optional", `Bool iso) :: []) -> rwid attr id
+| `Null -> "null"
+| oth -> othj := oth; failwith "rwid"
+
+let rwlit attr = function
+| `Int n -> CInt n
+| `Float n -> CNum n
+| `String s -> CString s
+| `Null -> CNull
+| `Bool b -> CBool b
+| oth -> othj := oth; failwith "rwlit"
+
+let rwprop' attr = function
+| `Assoc (("type", `String "Identifier") :: ("start", `Int lo) :: ("end", `Int hi) :: ("name", `String nam) :: []) -> PropId (fr nam)
+| `Assoc (("type", `String "Literal") :: ("start", `Int lo) :: ("end", `Int hi) :: ("value", value) :: ("raw", `String str) :: []) ->
+    (match rwlit attr value with CString s -> PropString s | CInt n -> PropNum n | oth -> failwith "rwprop'")
+| `Assoc (("type", `String "MemberExpression") :: ("start", `Int lo) :: ("end", `Int hi) :: ("object", id) :: ("property", id') :: ("computed", `Bool isc) :: ("optional", `Bool iso) :: []) -> PropString (rwid attr id)
+| oth -> othj := oth; failwith "rwprop'"
+
+let rwaop attr = function
+| `String "=" -> OpAssign
+| `String "+=" -> OpAssignAdd
+| `String "-=" -> OpAssignSub
+| `String "*=" -> OpAssignMul
+| `String "/=" -> OpAssignDiv
+| `String "%=" -> OpAssignMod
+| `String "<<=" -> OpAssignLShift
+| `String ">>=" -> OpAssignSpRShift
+| `String ">>>=" -> OpAssignZfRShift
+| `String "&=" -> OpAssignBAnd
+| `String "^=" -> OpAssignBXor
+| `String "|=" -> OpAssignBOr
+| oth -> othj := oth; failwith "rwaop"
+
+let rwreg s' = function
+| ("pattern", `String s) -> s' := s
+| ("flags", `String _) -> ()
+| oth -> othreg := Some oth; failwith "rwreg"
+
+let rec rwel attr = function
+| `Assoc (("type", `String "Literal") :: ("start", `Int lo) :: ("end", `Int hi) :: ("value", value) :: ("raw", `String str) :: []) ->
+    ConstExpr(pos attr lo hi, rwlit attr value)
+| `Assoc (("type", `String "Literal") :: ("start", `Int lo) :: ("end", `Int hi) :: ("value", value) :: ("raw", `String str) :: ("regex", `Assoc regex) :: []) ->
+    let s = ref "" in
+    List.iter (rwreg s) regex;
+    ConstExpr(pos attr lo hi, CRegexp (!s, false, false))
+| `Assoc (("type", `String "Identifier") :: ("start", `Int lo) :: ("end", `Int hi) :: ("name", `String nam) :: []) -> VarExpr(pos attr lo hi, fr nam)
+| `Assoc (("type", `String "ThisExpression") :: ("start", `Int lo) :: ("end", `Int hi) :: []) -> ThisExpr(pos attr lo hi)
+| `Assoc (("type", `String ("SpreadElement" as typ)) :: ("start", `Int lo) :: ("end", `Int hi) :: ("argument", arg) :: []) ->
+     DotExpr(pos attr lo hi, rwel attr arg, typ)
+| `Assoc (("type", `String "ConditionalExpression") :: ("start", `Int lo) :: ("end", `Int hi) :: ("test", expr) :: ("consequent", then_e) :: ("alternate", else_e):: []) ->
+    IfExpr(pos attr lo hi, rwel attr expr, rwel attr then_e, rwel attr else_e)
+| `Assoc (("type", `String "SequenceExpression") :: ("start", `Int lo) :: ("end", `Int hi) :: ("expressions", `List exprlst) :: []) ->
+    SeqExpr(pos attr lo hi, List.map (rwel attr) exprlst)
+| `Assoc (("type", `String "UnaryExpression") :: ("start", `Int lo) :: ("end", `Int hi) :: ("operator", op) :: ("prefix", `Bool true) :: ("argument", arg) :: []) ->
+    PrefixExpr (pos attr lo hi, rwuop attr op, rwel attr arg)
+| `Assoc (("type", `String "BinaryExpression") :: ("start", `Int lo) :: ("end", `Int hi) :: ("left", lft) :: ("operator", op) :: ("right", rght) :: []) ->
+    InfixExpr (pos attr lo hi, rwifop attr op, rwel attr lft, rwel attr rght)
+| `Assoc (("type", `String "LogicalExpression") :: ("start", `Int lo) :: ("end", `Int hi) :: ("left", lft) :: ("operator", op) :: ("right", rght) :: []) ->
+    InfixExpr (pos attr lo hi, rwifop attr op, rwel attr lft, rwel attr rght)
+| `Assoc (("type", `String "ArrayExpression") :: ("start", `Int lo) :: ("end", `Int hi) :: ("elements", `List elem) :: []) ->
+     ArrayExpr(pos attr lo hi, List.map (rwel attr) elem)
+| `Assoc (("type", `String "MemberExpression") :: ("start", `Int lo) :: ("end", `Int hi) :: ("object", obj) :: ("property", prop) :: ("computed", `Bool comp) :: ("optional", `Bool opt) :: []) -> MemberExpr(pos attr lo hi, rwel attr obj, rwel attr prop)
+| `Assoc (("type", `String "ObjectExpression") :: ("start", `Int lo) ::  ("end", `Int hi) :: ("properties", `List prop) :: []) ->
+     othlst := prop;
+     ObjectExpr(pos attr lo hi, List.map (fun prop (* (k, expr) *) -> let p, key',prop' = rwprop attr prop in (p, key', prop')) prop)
+| `Assoc (("type", `String "NewExpression") :: ("start", `Int lo) :: ("end", `Int hi) :: ("callee", id') :: ("arguments", `List args) :: []) ->
+    NewExpr (pos attr lo hi, rwel attr id', List.map (rwel attr) args)
+| `Assoc (("type", `String "ClassExpression") :: ("start", `Int lo) :: ("end", `Int hi) :: ("id", id') :: ("superClass", super') :: ("body", body) :: []) ->
+    ClassExpr(pos attr lo hi, rwid attr id', rwid attr super', rwstmt attr body)
+| `Assoc (("type", `String "ExpressionStatement") :: ("start", `Int lo) :: ("end", `Int hi) :: ("expression", expr) :: tl) ->
+     rwel attr expr
+| `Assoc (("type", `String "AssignmentExpression") :: ("start", `Int lo) :: ("end", `Int hi) :: ("operator", op) :: ("left", left) :: ("right", right) :: tl) -> 
+     AssignExpr(pos attr lo hi, rwaop attr op, rwlvalue attr (rwel attr left), rwel attr right)
+| `Assoc (("type", `String "UpdateExpression") :: ("start", `Int lo) :: ("end", `Int hi) :: ("operator", op) :: ("prefix", `Bool prefix) :: ("argument", arg) :: []) ->
+     UnaryAssignExpr(pos attr lo hi, rwuaop attr prefix op, rwlvalue attr (rwel attr arg))
+| `Assoc (("type", `String "CallExpression") :: ("start", `Int lo) :: ("end", `Int hi) :: ("callee", `Assoc (("type", `String "Super") :: _)) :: ("arguments", `List a) :: ("optional", `Bool o) :: []) ->
+     CallExpr(pos attr lo hi, ConstExpr(pos attr lo hi, CString "Super"), List.map (rwel attr) a)
+| `Assoc (("type", `String "CallExpression") :: ("start", `Int lo) :: ("end", `Int hi) :: ("callee", c) :: ("arguments", `List a) :: ("optional", `Bool o) :: []) ->
+     CallExpr(pos attr lo hi, rwel attr c, List.map (rwel attr) a)
+| `Assoc (("type", `String "FunctionDeclaration") :: ("start", `Int lo) :: ("end", `Int hi) :: ("id", id') :: ("expression", `Bool ise) :: ("generator", `Bool gen) :: ("async", `Bool asy) :: ("params", `List p) :: ("body", body) :: []) ->
+     NamedFuncExpr(pos attr lo hi, rwid attr id', List.map (rwid attr) p, rwstmt attr body)
+| `Assoc (("type", `String "FunctionExpression") :: ("start", `Int lo) :: ("end", `Int hi) :: ("id", id') :: ("expression", `Bool ise) :: ("generator", `Bool gen) :: ("async", `Bool asy) :: ("params", `List p) :: ("body", body) :: []) ->
+     if id' <> `Null then
+        NamedFuncExpr(pos attr lo hi, rwid attr id', List.map (rwid attr) p, rwstmt attr body)
+     else
+	FuncExpr(pos attr lo hi, List.map (rwid attr) p, rwstmt attr body)
+| `Assoc (("type", `String "ArrowFunctionExpression") :: ("start", `Int lo) :: ("end", `Int hi) :: ("id", `Null) :: ("expression", `Bool ise) :: ("generator", `Bool gen) :: ("async", `Bool asy) :: ("params", `List p) :: ("body", body) :: []) ->
+     ArrowFuncExpr(pos attr lo hi, List.map (rwid attr) p, rwstmt attr body)
+| `Assoc (("type", `String "TemplateLiteral") :: ("start", `Int lo) :: ("end", `Int hi) :: ("expressions", `List lst) :: ("quasis", `List qlst) :: []) ->
+     TemplateExpr(pos attr lo hi, List.map (rwel attr) lst, List.map (rwel attr) qlst)
+| `Assoc (("type", `String "TemplateElement") :: ("start", `Int lo) :: ("end", `Int hi) :: ("value", `Assoc value) :: ("tail", `Bool tail) :: []) ->
+     TemplateElem(pos attr lo hi, List.map (function (s, `String str) -> (s,str) | _ -> failwith "elem") value)
+| `Assoc (("type", `String "ObjectPattern") :: ("start", `Int lo) :: ("end", `Int hi) :: ("properties", `List props) :: []) ->
+     ObjectExpr(pos attr lo hi, List.map (fun itm -> let p,k,v = rwprop attr itm in (p,k,v)) props)
+| `Null -> PrefixExpr(pos attr 0 0, PrefixVoid, VarExpr(pos attr 0 0, ""))
+
+| oth -> othel := oth; failwith "rwel"
+
+and rwcase attr = function
+| `Assoc (("type", `String "SwitchCase") :: ("start", `Int lo) :: ("end", `Int hi) :: ("consequent", `List lst) :: ("test", expr) :: []) -> CaseClause(pos attr lo hi, rwel attr expr, BlockStmt (pos attr lo hi, List.map (rwstmt attr) lst))
+| oth -> othj := oth; failwith "rwcase"
+
+and rwlvalue attr = function
+| DotExpr(pos, body, memb) -> DotLValue(pos, body, memb)
+| VarExpr(pos, id) -> VarLValue(pos, id)
+| MemberExpr(pos, obj, prop) -> MemberLValue(pos, obj, prop)
+| oth -> othl := Some oth; failwith "rwlvalue"
+
+and rwstmt attr = function
+| `Assoc (("type", `String "VariableDeclaration") :: ("start", `Int lo) :: ("end", `Int hi) :: ("declarations", `List declst) :: tl) ->
+     VarDeclStmt(pos attr lo hi, List.map (rwdecl attr) declst)
+| `Assoc (("type", `String "VariableDeclaration") :: tl) -> failwith "VariableDeclaration"
+| `Assoc (("type", `String "BlockStatement") :: ("start", `Int lo) :: ("end", `Int hi) :: ("body", `List stmts) :: []) ->
+    BlockStmt (pos attr lo hi, List.map (fun itm -> othblk := itm; rwstmt attr itm) stmts)
+| `Assoc (("type", `String "LabeledStatement") :: ("start", `Int lo) :: ("end", `Int hi) :: ("body", body) :: ("label", lab) :: []) ->
+   rwstmt attr body
+| `Assoc (("type", `String "LabeledStatement") :: tl as l) -> othlab := l; failwith "label"
+| `Assoc (("type", `String "IfStatement") :: ("start", `Int lo) :: ("end", `Int hi) :: ("test", expr) :: ("consequent", then_stmt) :: ("alternate", else_stmt) :: []) ->
+    IfStmt(pos attr lo hi, rwel attr expr, rwstmt attr then_stmt, rwstmt attr else_stmt)
+| `Assoc (("type", `String "DoWhileStatement") :: ("start", `Int lo) :: ("end", `Int hi) :: ("body", stmt) :: ("test", expr) :: []) ->
+    DoWhileStmt(pos attr lo hi, rwstmt attr stmt, rwel attr expr)
+| `Assoc (("type", `String "WhileStatement") :: ("start", `Int lo) :: ("end", `Int hi) :: ("test", expr) :: ("body", stmt) :: []) ->
+    WhileStmt(pos attr lo hi, rwel attr expr, rwstmt attr stmt)
+| `Assoc (("type", `String "ReturnStatement") :: ("start", `Int lo) :: ("end", `Int hi) :: ("argument", expr) :: []) ->
+    othr := expr;
+    ReturnStmt(pos attr lo hi, rwel attr expr)
+| `Assoc (("type", `String "ForStatement") :: ("start", `Int lo) :: ("end", `Int hi) :: ("init", init) :: ("test", teste) :: ("update", updexp) :: ("body", body) :: []) -> ForStmt(pos attr lo hi, rwinit attr init, rwel attr teste, rwel attr updexp, rwstmt attr body)
+| `Assoc (("type", `String "ForOfStatement") :: ("start", `Int lo) :: ("end", `Int hi) :: ("await", `Bool await) :: ("left", decl) :: ("right", exp) :: ("body", body) :: []) -> othf := decl; let left = rwofinit attr decl in ForOfStmt(pos attr lo hi, left, rwel attr exp, rwstmt attr body)
+| `Assoc (("type", `String "ForInStatement") :: ("start", `Int lo) :: ("end", `Int hi) :: ("left", decl) :: ("right", exp) :: ("body", body) :: []) ->
+    othf := decl; let left = rwininit attr decl in ForInStmt(pos attr lo hi, left, rwel attr exp, rwstmt attr body)
+| `Assoc (("type", `String "SwitchStatement") :: ("start", `Int lo) :: ("end", `Int hi) :: ("discriminant", expr) :: ("cases", `List cases) :: tl) ->
+     SwitchStmt(pos attr lo hi, rwel attr expr, List.map (rwcase attr) cases)
+| `Assoc (("type", `String "TryStatement") :: ("start", `Int lo) :: ("end", `Int hi) :: ("block", stmt) :: ("handler", hstmt) :: ("finalizer", fstmt) :: []) as t ->
+    otht := t;
+    TryStmt(pos attr lo hi, rwstmt attr stmt, rwcatch attr hstmt, rwstmt attr fstmt)
+| `Assoc (("type", `String "ThrowStatement") :: ("start", `Int lo) :: ("end", `Int hi) :: ("argument", arg) :: []) ->
+    ThrowStmt(pos attr lo hi, rwel attr arg)
+| `Assoc (("type", `String "ContinueStatement") :: ("start", `Int lo) :: ("end", `Int hi) :: ("label", lab) :: []) ->
+    ContinueStmt (pos attr lo hi)
+| `Assoc (("type", `String "BreakStatement") :: ("start", `Int lo) :: ("end", `Int hi) :: ("label", lab) :: []) ->
+    BreakStmt(pos attr lo hi)
+| `Assoc (("type", `String "EmptyStatement") :: ("start", `Int lo) :: ("end", `Int hi) :: []) ->
+    EmptyStmt(pos attr lo hi)
+| `Assoc (("type", `String "ClassBody") :: ("start", `Int lo) :: ("end", `Int hi) :: ("body", `List lst) :: []) ->
+    ClassBodyStmt(pos attr lo hi, List.map (rwstmt attr) lst)
+| `Assoc (("type", `String "MethodDefinition") :: ("start", `Int lo) :: ("end", `Int hi) :: ("static", `Bool sflag) :: ("computed", `Bool cflag) :: ("key", id') :: ("kind", `String kind) :: ("value", value) :: []) ->
+    MethodDefinitionStmt(pos attr lo hi, sflag, cflag, rwel attr id', kind, rwel attr value)
+| `Assoc (("type", `String "ClassDeclaration") :: ("start", `Int lo) :: ("end", `Int hi) :: ("id", id') :: ("superClass", super) :: ("body", body) :: []) ->
+    ClassDeclStmt(pos attr lo hi, rwid attr id', rwid attr super, rwstmt attr body)
+| itm -> othitm := itm; ExprStmt (rwel attr itm)
+
+and rwcatch attr = function
+| `Assoc (("type", `String "CatchClause") :: ("start", `Int lo) :: ("end", `Int hi) :: ("param", p) :: ("body", stmt) :: []) ->
+  CatchClause(pos attr lo hi, rwid attr p, rwstmt attr stmt) :: []
+| `Null -> []
+| oth -> othc := oth; failwith "rwcatch"
+     
+and rwinit attr = function
+| `Assoc (("type", `String "VariableDeclaration") :: ("start", `Int lo) :: ("end", `Int hi) :: ("declarations", `List declst) :: ("kind", `String kind) :: []) ->
+    VarForInit (List.map (rwdecl attr) declst)
+| oth -> ExprForInit(rwel attr oth)
+
+and rwofinit attr = function
+| `Assoc (("type", `String "VariableDeclaration") :: ("start", `Int lo) :: ("end", `Int hi) :: ("declarations", `List declst) :: ("kind", `String kind) :: []) ->
+    othdecl := declst;
+    VarForOfInit (pos attr lo hi, match List.map (rwdecl attr) declst with VarDecl(pos, id, _) :: [] -> id | ArrayPattern(pos, lst) :: [] -> List.hd lst | oth -> othofinit := oth; failwith "rwofinit")
+| oth -> othd' := Some oth; failwith "rwofinit"
+
+and rwininit attr = function
+| `Assoc (("type", `String "VariableDeclaration") :: ("start", `Int lo) :: ("end", `Int hi) :: ("declarations", `List declst) :: ("kind", `String kind) :: []) ->
+    othdecl := declst;
+    VarForInInit (pos attr lo hi, match List.map (rwdecl attr) declst with VarDecl(pos, id, _) :: [] -> id | oth -> othininit := oth; failwith "rwininit436")
+| `Assoc (("type", `String "ArrayPattern") :: ("start", `Int lo) :: ("end", `Int hi) :: ("elements", `List elst) :: []) ->
+    VarForInInit (pos attr lo hi, match List.map (rwdecl attr) elst with VarDecl(pos, id, _) :: _ -> id | oth -> othininit := oth; failwith "rwininit438")
+| `Assoc (("type", `String "Identifier") :: ("start", `Int lo) :: ("end", `Int hi) :: ("name", `String nam) :: []) ->
+    VarForInInit (pos attr lo hi, fr nam)
+| oth -> othd' := Some oth; failwith "rwininit"
+      
+and rwdecl attr = function
+`Assoc (("type", `String "VariableDeclarator") :: ("start", `Int lo) :: ("end", `Int hi) :: ("id", id') :: ("init", expr) :: [] as l) ->
+       othlab := l;
+       (match id' with
+         | `Assoc (("type", `String "ObjectPattern") :: _) ->  VarDecl(pos attr lo hi, "", rwel attr expr)
+	 | `Assoc (("type", `String "ArrayPattern") :: ("start", `Int lo) :: ("end", `Int hi) :: ("elements", `List ids) :: []) ->
+	     ArrayPattern(pos attr lo hi, List.map (rwid attr) ids)
+	 | _ -> VarDecl(pos attr lo hi, rwid attr id', rwel attr expr))
+(*
+| `Assoc (("type", `String "VariableDeclarator") :: ("start", `Int lo) :: ("end", `Int hi) :: ("declarations", `List lst) :: tl) ->
+  rwdecl' attr lst
+*)  
+| oth -> othd' := Some oth; failwith "rwdecl"
+
+and rwdecl' attr = function
+(*
+| `Assoc (("type", `String "VariableDeclaration") :: ("start", `Int lo) :: ("end", `Int hi) :: ("declarations", `List lst) :: tl) ->
+  List.map (rwdecl' attr) lst
+*)
+| oth -> othd := Some oth; failwith "rwdecl'"
+
+and rwprop attr = function
+| `Assoc (("type", `String "Property") :: ("start", `Int lo) :: ("end", `Int hi) :: ("method", `Bool meth) :: ("shorthand", `Bool short) :: ("computed", `Bool comp) :: ("key", key) :: ("value", value) :: tl) -> 
+     pos attr lo hi, rwprop' attr key, rwel attr value
+| `Assoc (("type", `String "Property") :: ("start", `Int lo) :: ("end", `Int hi) :: ("method", `Bool meth) :: ("shorthand", `Bool short) :: ("computed", `Bool comp) :: ("key", key) :: ("kind", `String init) :: ("value", value) :: tl) -> 
+     pos attr lo hi, rwprop' attr key, rwel attr value
+| `Assoc (("type", `String ("SpreadElement" as s)) :: ("start", `Int lo) :: ("end", `Int hi) :: ("argument", arg) :: []) ->
+     pos attr lo hi, PropString s, rwel attr arg
+| oth -> othj := oth; failwith "rwprop"
+
+let rec rw (attr, (arg: Yojson.Safe.t)) = match arg with
+| `Assoc (("type", `String "Program") :: ("start", `Int lo) :: ("end", `Int hi) :: ("body", `List body) :: tl) ->
+     othlst' := tl;
+     Prog(pos attr lo hi, List.map (rwstmt attr) body)
+(*
+| `Assoc oth as a -> ignore (rwel a)
+| `Bool _ -> failwith "rw1"
+| `Float _ -> failwith "rw2"
+| `Int n -> ()
+| `Intlit _ -> failwith "rw4"
+| `List _ -> failwith "rw5"
+| `Null -> failwith "rw6"
+| `String s -> print_endline s
+| `Tuple _ -> failwith "rw8"
+| `Variant _ -> failwith "rw9"
+*)
+| _ -> failwith "rw";;
+
+let x = acorn' "../2.12.1/rootfs/usr/lib/node/prod/src/utils/RouteFactory.js";;
+let y = rw x;;
+
+let j = json();;
+let rwlst = List.map (fun (f,itm) -> (f,itm), (try rw (f,itm) with _ -> Prog(pos f 0 0, []))) j;;
+let good,bad = List.partition (function _, Prog(pos,[]) -> false | _ -> true) rwlst;;
+
+let d = traverse (snd (List.hd good));;
+let fnamed = Hashtbl.create 255;;
+let fmatch = function
+| ExprStmt (NamedFuncExpr (_, fn, [], BlockStmt (_, lst))) ->
+let matchok = function
+| nam, Some(nam2,nam2'), Some nam3 -> if nam=nam2' && nam2=nam3 then true else (print_endline (nam^" "^nam2^" "^nam2'^" "^nam3); false)
+| _ -> false in
+let match2 = function
+| ExprStmt (AssignExpr(_,OpAssign,VarLValue(_,lv1),FuncExpr(_,[],BlockStmt(_,(ReturnStmt(_,VarExpr(_,lv2)) :: []))))) -> Some (lv1,lv2)
+| _ -> None in
+let match3 = function
+| ReturnStmt (_, CallExpr(_, VarExpr(_, lv1), [])) -> Some lv1
+| _ -> None in
+let match1 = function
+  | VarDeclStmt (_, (VarDecl (_,nam,ArrayExpr(_,lst)) :: [])) :: lst2 :: lst3 :: [] when matchok (nam, (match2 lst2), (match3 lst3)) -> List.map (function ConstExpr (_, itm) -> itm | _ -> CNull) lst
+  | _ -> [] in
+let lst' = match1 lst in
+Hashtbl.add fnamed fn lst'
+| _ -> ()
+
+let _ = List.iter (function _,Prog (_, lst) ->  List.iter fmatch lst) good;;
+
+let ex1 = Hashtbl.find fnamed (fr "a86_0x7158");;
+
+let _ = let fd = open_out "unobf.sed" in Hashtbl.iter (fun k x -> if k <> x then output_string fd ("s="^k^"="^x^"=g\n")) friendtab; close_out fd;

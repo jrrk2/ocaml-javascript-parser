@@ -96,6 +96,7 @@ rule token = parse
 
    | '"' { parse_re := false; string_lit '"' lexbuf }
    | '\'' { parse_re := false; string_lit '\'' lexbuf }
+   | '`' { parse_re := false; string_lit '`' lexbuf }
    
    | num_lit as x {  parse_re := false; parse_num_lit x }
 
@@ -172,6 +173,7 @@ rule token = parse
    | "const" { parse_re := false; Var (* HACK *) }
    | "var" { parse_re := false; Var  }
    | "in" { parse_re := false; In  }
+   | "of" { parse_re := false; Of  }
    | "for" { parse_re := false; For  }
    | "try" { parse_re := false; Try  }
    | "catch" { parse_re := false; Catch  }

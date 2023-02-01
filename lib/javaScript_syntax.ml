@@ -71,6 +71,7 @@ type prop =
 type varDecl =
   | VarDeclNoInit of Pos.t * id
   | VarDecl of Pos.t * id * expr
+  | ArrayPattern of Pos.t * id list
 
 and forInit =
   | NoForInit
@@ -84,6 +85,10 @@ and forInInit =
   | VarForInInit of Pos.t * id
   | NoVarForInInit of Pos.t * id
 
+and forOfInit =
+  | VarForOfInit of Pos.t * id
+  | NoVarForOfInit of Pos.t * id
+
 and caseClause =
   | CaseClause of Pos.t * expr * stmt
   | CaseDefault of Pos.t * stmt
@@ -92,6 +97,7 @@ and lvalue =
   | VarLValue of Pos.t * id
   | DotLValue of Pos.t * expr * id
   | BracketLValue of Pos.t * expr * expr
+  | MemberLValue of Pos.t * expr * expr
 
 and expr =
   | ConstExpr of Pos.t * const
@@ -112,6 +118,12 @@ and expr =
   | CallExpr of Pos.t * expr * expr list
   | FuncExpr of Pos.t * id list * stmt
   | NamedFuncExpr of Pos.t * id * id list * stmt
+  | SeqExpr of Pos.t * expr list
+  | MemberExpr of Pos.t * expr * expr
+  | ArrowFuncExpr of Pos.t * id list * stmt
+  | TemplateExpr of Pos.t * expr list * expr list
+  | TemplateElem of Pos.t * (string*string) list
+  | ClassExpr of Pos.t * id * id * stmt
 
 and stmt =
   | BlockStmt of Pos.t * stmt list
@@ -128,6 +140,7 @@ and stmt =
   | ContinueToStmt of Pos.t * id
   | LabelledStmt of Pos.t * id * stmt
   | ForInStmt of Pos.t * forInInit * expr * stmt
+  | ForOfStmt of Pos.t * forOfInit * expr * stmt
   | ForStmt of Pos.t * forInit * expr * expr * stmt
   | TryStmt of Pos.t * stmt * catch list * stmt
   | ThrowStmt of Pos.t * expr
@@ -135,6 +148,9 @@ and stmt =
   | WithStmt of Pos.t * expr * stmt
   | VarDeclStmt of Pos.t * varDecl list
   | FuncStmt of Pos.t * id * id list * stmt
+  | ClassDeclStmt of Pos.t * id * id * stmt
+  | ClassBodyStmt of Pos.t * stmt list
+  | MethodDefinitionStmt of Pos.t * bool * bool * expr * string * expr
 
 type prog =
   | Prog of Pos.t * stmt list
@@ -175,6 +191,7 @@ let pos_stmt s = match s with
   | ContinueToStmt (p, _)
   | LabelledStmt (p, _, _)
   | ForInStmt (p, _, _, _)
+  | ForOfStmt (p, _, _, _)
   | ForStmt (p, _, _, _, _)
   | TryStmt (p, _, _, _)
   | ThrowStmt (p, _)
